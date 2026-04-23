@@ -12,12 +12,12 @@ import { Settings } from 'lucide-react';
 
 export default function Home() {
   const [currentView, setCurrentView] = useState<View>('dashboard');
-  const { tasks, loading, user, authLoading, login } = useConfig();
+  const { tasks, loading } = useConfig();
   const hasNotifiedRef = useRef(false);
 
   useEffect(() => {
     // Check for today's tasks on mount
-    if (user && tasks && tasks.length > 0 && !hasNotifiedRef.current) {
+    if (tasks && tasks.length > 0 && !hasNotifiedRef.current) {
       const today = new Date().toISOString().split('T')[0];
       const todayTasks = tasks.filter(t => t.date === today && t.status === 'Pendente');
       
@@ -26,51 +26,7 @@ export default function Home() {
         hasNotifiedRef.current = true;
       }
     }
-  }, [tasks, user]);
-
-  if (authLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f8f9f9]">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-16 h-16 border-4 border-primary-container border-t-transparent rounded-full animate-spin"></div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-900 overflow-hidden relative">
-        {/* Abstract background elements */}
-        <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary-container/20 blur-[120px] rounded-full" />
-        <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-600/10 blur-[120px] rounded-full" />
-        
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="bg-white p-12 rounded-2xl shadow-2xl max-w-md w-full text-center relative z-10"
-        >
-          <div className="w-20 h-20 bg-primary-container rounded-2xl flex items-center justify-center mx-auto mb-8 rotate-3 shadow-lg">
-            <Settings className="text-white w-10 h-10 animate-spin-slow" />
-          </div>
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">AGÊNCIA DAFMA</h1>
-          <p className="text-slate-500 mb-10">O cérebro da sua operação de marketing, agora com proteção de dados.</p>
-          
-          <button 
-            onClick={login}
-            className="w-full py-4 bg-primary-container hover:bg-orange-500 text-white rounded-xl font-bold flex items-center justify-center gap-3 transition-all transform hover:-translate-y-1 shadow-[0px_8px_24px_rgba(255,102,0,0.3)]"
-          >
-            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-6 h-6 bg-white rounded-full p-1" alt="Google logo" />
-            Entrar com Google
-          </button>
-          
-          <p className="mt-8 text-xs text-slate-400">
-            Ao entrar, você concorda com os termos de uso e privacidade da Agência DAFMA.
-          </p>
-        </motion.div>
-      </div>
-    );
-  }
+  }, [tasks]);
 
   if (loading) {
     return (
