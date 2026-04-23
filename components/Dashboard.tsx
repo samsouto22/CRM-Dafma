@@ -129,15 +129,26 @@ export function Dashboard({ onViewChange }: { onViewChange: (view: View) => void
   // Breakdown by origin
   const originCounts: Record<string, number> = {};
   clients.forEach(c => {
-    originCounts[c.origin] = (originCounts[c.origin] || 0) + 1;
+    const origin = c.origin || 'Outras';
+    originCounts[origin] = (originCounts[origin] || 0) + 1;
   });
 
   const totalClients = clients.length || 1;
-  const originsBreakdown = Object.entries(originCounts).map(([name, count]) => ({
-    name,
-    value: Math.round((count / totalClients) * 100),
-    color: name === 'Meta Ads' ? '#1877f2' : name === 'Google Ads' ? '#ea4335' : name === 'Indicação' ? '#10b981' : '#64748b'
-  })).sort((a, b) => b.value - a.value).slice(0, 4);
+  const originsBreakdown = Object.entries(originCounts).map(([name, count]) => {
+    let color = '#64748b'; // Default: Outras
+    if (name === 'Facebook Ads') color = '#1877f2';
+    else if (name === 'Instagram Ads' || name === 'Instagram') color = '#e1306c';
+    else if (name === 'Google Ads') color = '#0f9d58';
+    else if (name === 'Reativação') color = '#ff6600';
+    else if (name === 'Indicação') color = '#00b8d9';
+    else if (name === 'Prospecção Ativa') color = '#3f51b5';
+
+    return {
+      name,
+      value: Math.round((count / totalClients) * 100),
+      color
+    };
+  }).sort((a, b) => b.value - a.value); // Show all sources, sorted by value
 
   // Next Tasks Logic
   const upcomingTasks = [...(tasks || [])]
@@ -249,8 +260,8 @@ export function Dashboard({ onViewChange }: { onViewChange: (view: View) => void
           </div>
 
           <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm h-[400px] flex flex-col">
-            <h3 className="text-lg font-bold mb-8">Origem dos Clientes</h3>
-            <div className="space-y-6 flex-1 flex flex-col justify-center">
+            <h3 className="text-lg font-bold mb-6">Origem dos Clientes</h3>
+            <div className="space-y-4 flex-1 overflow-y-auto pr-2 custom-scrollbar">
               {originsBreakdown.length > 0 ? originsBreakdown.map((origin) => (
                 <div key={origin.name}>
                   <div className="flex justify-between text-sm font-medium mb-2">

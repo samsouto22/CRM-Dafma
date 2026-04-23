@@ -173,12 +173,23 @@ export function ClientManagement() {
                           </div>
                         </td>
                         <td className="px-5 py-4">
-                          <span className={cn(
-                            "px-2 py-1 rounded text-[10px] font-bold uppercase whitespace-nowrap",
-                            client.plan?.includes('Aceleração') ? "bg-blue-100 text-blue-800" : "bg-purple-100 text-purple-800"
-                          )}>
-                            {client.plan}
-                          </span>
+                          {(() => {
+                            const plan = client.plan;
+                            let colors = "bg-slate-100 text-slate-800";
+                            if (plan === 'Google Performance') colors = "bg-green-100 text-[#0F9D58]";
+                            else if (plan === 'Meta Performance') colors = "bg-blue-100 text-[#1877F2]";
+                            else if (plan === 'Presença Total') colors = "bg-orange-100 text-[#FF6600]";
+                            else if (plan === 'Aceleração Total') colors = "bg-purple-100 text-[#673AB7]";
+                            
+                            return (
+                              <span className={cn(
+                                "px-2 py-1 rounded text-[10px] font-bold uppercase whitespace-nowrap",
+                                colors
+                              )}>
+                                {plan}
+                              </span>
+                            );
+                          })()}
                         </td>
                         <td className="px-5 py-4 text-sm text-on-surface font-mono text-right font-bold">{client.monthly}</td>
                         <td className="px-5 py-4 text-sm text-slate-500 font-medium">

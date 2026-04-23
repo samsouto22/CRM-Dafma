@@ -101,8 +101,10 @@ export function ConfigProvider({ children }: { children: React.ReactNode }) {
     const unsub = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setAuthLoading(false);
-      // Reset loading if no user to show login screen
-      if (!currentUser) {
+      if (currentUser) {
+        setLoading(true);
+      } else {
+        setClients([]);
         setLoading(false);
       }
     });
@@ -126,7 +128,6 @@ export function ConfigProvider({ children }: { children: React.ReactNode }) {
   // Sync Clients
   useEffect(() => {
     if (!user) return;
-    setLoading(true);
     const q = query(collection(db, 'clients'), orderBy('startDate', 'desc'));
     const unsub = onSnapshot(q, (snapshot) => {
       const clientsData: Client[] = [];
