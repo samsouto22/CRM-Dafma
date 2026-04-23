@@ -1,0 +1,39 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@theme {
+  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  
+  --color-primary: #a33e00;
+  --color-primary-container: #ff6600;
+  --color-on-primary-container: #561d00;
+  
+  --color-secondary: #010521;
+  --color-on-secondary: #ffffff;
+  
+  --color-surface: #f8f9f9;
+  --color-surface-container: #edeeee;
+  --color-surface-container-lowest: #ffffff;
+  
+  --color-on-surface: #191c1c;
+  --color-on-surface-variant: #5a4136;
+  
+  --radius-md: 0.5rem;
+  --radius-lg: 1rem;
+}
+
+@layer base {
+  body {
+    @apply bg-surface text-on-surface;
+  }
+}
+
+@layer components {
+  .card-elevation-1 {
+    @apply bg-surface-container-lowest border border-slate-200 rounded-lg;
+  }
+  
+  .card-elevation-2 {
+    @apply hover:shadow-[0px_4px_20px_rgba(1,5,33,0.08)] hover:border-transparent transition-all duration-300;
+  }
+}

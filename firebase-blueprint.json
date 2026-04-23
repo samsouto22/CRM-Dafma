@@ -1,0 +1,61 @@
+{
+  "entities": {
+    "Client": {
+      "title": "Client",
+      "description": "Represents a marketing client in the CRM",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier (Firestore ID or synthetic)" },
+        "company": { "type": "string" },
+        "responsible": { "type": "string" },
+        "plan": { "type": "string" },
+        "monthly": { "type": "string" },
+        "origin": { "type": "string" },
+        "status": { "type": "string", "enum": ["Ativo", "Inativo"] },
+        "startDate": { "type": "string", "format": "date" },
+        "totalPaid": { "type": "string" },
+        "avatar": { "type": "string" },
+        "avatarBg": { "type": "string" }
+      },
+      "required": ["company", "responsible", "status"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "Activity task related or not to a client",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "description": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "clientId": { "type": "string" },
+        "clientName": { "type": "string" },
+        "status": { "type": "string", "enum": ["Pendente", "Concluído"] }
+      },
+      "required": ["description", "date", "status"]
+    },
+    "Configuration": {
+      "title": "Configuration",
+      "description": "Global CRM app configuration like plans and origins",
+      "type": "object",
+      "properties": {
+        "plans": { "type": "array", "items": { "type": "string" } },
+        "origins": { "type": "array", "items": { "type": "string" } },
+        "fields": { "type": "array", "items": { "type": "object" } }
+      }
+    }
+  },
+  "firestore": {
+    "/clients/{clientId}": {
+      "schema": "Client",
+      "description": "Collection of clients"
+    },
+    "/tasks/{taskId}": {
+      "schema": "Task",
+      "description": "Collection of tasks"
+    },
+    "/configuration/global": {
+      "schema": "Configuration",
+      "description": "Global settings for the application"
+    }
+  }
+}

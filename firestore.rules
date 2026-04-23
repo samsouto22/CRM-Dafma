@@ -1,0 +1,51 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128;
+    }
+
+    // Helper for validation (Entity schema checks)
+    function isValidClient(data) {
+      return data.keys().hasAll(['company', 'responsible', 'status']) &&
+             data.company is string && data.company.size() > 0 &&
+             data.responsible is string &&
+             data.status in ['Ativo', 'Inativo'];
+    }
+
+    function isValidTask(data) {
+      return data.keys().hasAll(['description', 'date', 'status']) &&
+             data.description is string &&
+             data.date is string &&
+             data.status in ['Pendente', 'Concluído'];
+    }
+
+    match /clients/{clientId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(clientId) && isValidClient(request.resource.data);
+      allow update: if isSignedIn() && isValidClient(request.resource.data);
+      allow delete: if isSignedIn();
+    }
+
+    match /tasks/{taskId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(taskId) && isValidTask(request.resource.data);
+      allow update: if isSignedIn() && isValidTask(request.resource.data);
+      allow delete: if isSignedIn();
+    }
+
+    match /configuration/{configId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+  }
+}
