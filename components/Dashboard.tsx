@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   BarChart, 
   Bar, 
@@ -19,10 +19,12 @@ import {
   Wallet,
   TrendingUp,
   Calendar,
-  Download,
+  Tag,
   Search,
-  Bell,
-  Settings
+  Plus,
+  Settings,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useConfig } from '@/lib/config-context';
@@ -30,6 +32,41 @@ import { PageHeader } from './PageHeader';
 
 export function Dashboard({ onViewChange }: { onViewChange: (view: View) => void }) {
   const { clients, tasks } = useConfig();
+
+  const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
+  const [colWidths, setColWidths] = useState<Record<string, number>>({
+    description: 400,
+    clientName: 250,
+    date: 150
+  });
+
+  const requestSort = (key: string) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const handleResize = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const startX = e.pageX;
+    const startWidth = colWidths[id] || 150;
+    
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const newWidth = Math.max(80, startWidth + (moveEvent.pageX - startX));
+      setColWidths(prev => ({ ...prev, [id]: newWidth }));
+    };
+    
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+    
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  };
 
   const parseCurrency = (value: string) => {
     if (!value) return 0;
@@ -151,31 +188,35 @@ export function Dashboard({ onViewChange }: { onViewChange: (view: View) => void
   }).sort((a, b) => b.value - a.value); // Show all sources, sorted by value
 
   // Next Tasks Logic
-  const upcomingTasks = [...(tasks || [])]
+  const upcomingTasksRaw = [...(tasks || [])]
     .filter(t => t.status === 'Pendente')
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
     .slice(0, 5);
+
+  const sortedUpcomingTasks = [...upcomingTasksRaw].sort((a, b) => {
+    if (!sortConfig) return 0;
+    const { key, direction } = sortConfig;
+    let aValue = (a as any)[key];
+    let bValue = (b as any)[key];
+    if (key === 'date') {
+      aValue = new Date(aValue).getTime();
+      bValue = new Date(bValue).getTime();
+    }
+    if (aValue < bValue) return direction === 'asc' ? -1 : 1;
+    if (aValue > bValue) return direction === 'asc' ? 1 : -1;
+    return 0;
+  });
 
   return (
     <div className="flex-1 flex flex-col min-h-screen">
       <PageHeader />
 
       {/* Content */}
-      <main className="p-8 space-y-8 max-w-[1400px] mx-auto w-full">
+      <main className="p-8 space-y-8 max-w-[1800px] mx-auto w-full">
         <div className="flex justify-between items-end">
           <div>
             <h1 className="text-3xl font-bold text-on-surface">Visão Geral</h1>
             <p className="text-on-surface-variant mt-1">Acompanhe as principais métricas de desempenho da sua agência.</p>
-          </div>
-          <div className="flex gap-3">
-            <button className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-slate-50 transition-colors shadow-sm">
-              <Calendar size={18} />
-              Este Mês
-            </button>
-            <button className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-slate-50 transition-colors shadow-sm">
-              <Download size={18} />
-              Exportar
-            </button>
           </div>
         </div>
 
@@ -204,7 +245,7 @@ export function Dashboard({ onViewChange }: { onViewChange: (view: View) => void
           <KPICard 
             title="Ticket Médio" 
             value={formattedTicket} 
-            icon={DollarSign}
+            icon={Tag}
             iconColor="text-primary-container"
             iconBg="bg-orange-50"
             subText="per cliente ativo" 
@@ -305,19 +346,55 @@ export function Dashboard({ onViewChange }: { onViewChange: (view: View) => void
             <table className="w-full text-left">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Tarefa</th>
-                  <th className="py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Cliente</th>
-                  <th className="py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Data</th>
+                  <th 
+                    style={{ width: colWidths.description }}
+                    onClick={() => requestSort('description')}
+                    className="py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 relative group"
+                  >
+                    <div className="flex items-center gap-1">
+                      Tarefa
+                      {sortConfig?.key === 'description' && (
+                        sortConfig.direction === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />
+                      )}
+                    </div>
+                    <div onMouseDown={(e) => handleResize('description', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-container z-10" />
+                  </th>
+                  <th 
+                    style={{ width: colWidths.clientName }}
+                    onClick={() => requestSort('clientName')}
+                    className="py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 relative group"
+                  >
+                    <div className="flex items-center gap-1">
+                      Cliente
+                      {sortConfig?.key === 'clientName' && (
+                        sortConfig.direction === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />
+                      )}
+                    </div>
+                    <div onMouseDown={(e) => handleResize('clientName', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-container z-10" />
+                  </th>
+                  <th 
+                    style={{ width: colWidths.date }}
+                    onClick={() => requestSort('date')}
+                    className="py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-center cursor-pointer hover:bg-slate-100 relative group"
+                  >
+                    <div className="flex items-center justify-center gap-1">
+                      Data
+                      {sortConfig?.key === 'date' && (
+                        sortConfig.direction === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />
+                      )}
+                    </div>
+                    <div onMouseDown={(e) => handleResize('date', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-container z-10" />
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {upcomingTasks.length > 0 ? upcomingTasks.map((task, i) => (
+                {sortedUpcomingTasks.length > 0 ? sortedUpcomingTasks.map((task, i) => (
                   <tr 
                     key={task.id} 
                     onClick={() => onViewChange('tasks')}
                     className="hover:bg-slate-50 transition-colors group cursor-pointer"
                   >
-                    <td className="py-4 px-6 relative">
+                    <td className="py-4 px-6 relative" style={{ width: colWidths.description }}>
                       <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-primary group-hover:block hidden" />
                       <span className="text-sm font-semibold">{task.description}</span>
                     </td>

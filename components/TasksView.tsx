@@ -12,7 +12,9 @@ import {
   Circle, 
   Clock, 
   MoreVertical,
-  Trash2
+  Trash2,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/lib/utils';
@@ -76,13 +78,66 @@ export function TasksView() {
     });
   };
 
-  const sortedTasks = [...tasks].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
+  const [colWidths, setColWidths] = useState<Record<string, number>>({
+    status: 100,
+    date: 150,
+    clientName: 200,
+    description: 400
+  });
+
+  const requestSort = (key: string) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const handleResize = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const startX = e.pageX;
+    const startWidth = colWidths[id] || 150;
+    
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const newWidth = Math.max(80, startWidth + (moveEvent.pageX - startX));
+      setColWidths(prev => ({ ...prev, [id]: newWidth }));
+    };
+    
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+    
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  };
+
+  const sortedTasksData = [...tasks].sort((a, b) => {
+    if (!sortConfig) {
+      return new Date(a.date).getTime() - new Date(b.date).getTime();
+    }
+    const { key, direction } = sortConfig;
+    
+    let aValue = (a as any)[key];
+    let bValue = (b as any)[key];
+    
+    if (key === 'date') {
+      aValue = new Date(aValue).getTime();
+      bValue = new Date(bValue).getTime();
+    }
+
+    if (aValue < bValue) return direction === 'asc' ? -1 : 1;
+    if (aValue > bValue) return direction === 'asc' ? 1 : -1;
+    return 0;
+  });
 
   return (
     <div className="flex-1 flex flex-col min-h-screen">
       <PageHeader title="Tarefas" showSearch={false} />
 
-      <main className="p-8 space-y-8 max-w-[1400px] mx-auto w-full">
+      <main className="p-8 space-y-8 max-w-[1800px] mx-auto w-full">
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold text-on-surface">Gestão de Tarefas</h1>
@@ -103,15 +158,63 @@ export function TasksView() {
             <table className="w-full text-left">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Data</th>
-                  <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Cliente</th>
-                  <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Atividade</th>
+                  <th 
+                    style={{ width: colWidths.status }}
+                    onClick={() => requestSort('status')}
+                    className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 relative group"
+                  >
+                    <div className="flex items-center gap-1">
+                      Status
+                      {sortConfig?.key === 'status' && (
+                        sortConfig.direction === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />
+                      )}
+                    </div>
+                    <div onMouseDown={(e) => handleResize('status', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-container z-10" />
+                  </th>
+                  <th 
+                    style={{ width: colWidths.date }}
+                    onClick={() => requestSort('date')}
+                    className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 relative group"
+                  >
+                    <div className="flex items-center gap-1">
+                      Data
+                      {sortConfig?.key === 'date' && (
+                        sortConfig.direction === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />
+                      )}
+                    </div>
+                    <div onMouseDown={(e) => handleResize('date', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-container z-10" />
+                  </th>
+                  <th 
+                    style={{ width: colWidths.clientName }}
+                    onClick={() => requestSort('clientName')}
+                    className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 relative group"
+                  >
+                    <div className="flex items-center gap-1">
+                      Cliente
+                      {sortConfig?.key === 'clientName' && (
+                        sortConfig.direction === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />
+                      )}
+                    </div>
+                    <div onMouseDown={(e) => handleResize('clientName', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-container z-10" />
+                  </th>
+                  <th 
+                    style={{ width: colWidths.description }}
+                    onClick={() => requestSort('description')}
+                    className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 relative group flex-1"
+                  >
+                    <div className="flex items-center gap-1">
+                      Atividade
+                      {sortConfig?.key === 'description' && (
+                        sortConfig.direction === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />
+                      )}
+                    </div>
+                    <div onMouseDown={(e) => handleResize('description', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-container z-10" />
+                  </th>
                   <th className="px-6 py-4 text-right"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {sortedTasks.length === 0 ? (
+                {sortedTasksData.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="p-12 text-center text-slate-400">
                       <Clock size={40} className="mx-auto mb-3 opacity-20" />
@@ -119,7 +222,7 @@ export function TasksView() {
                     </td>
                   </tr>
                 ) : (
-                  sortedTasks.map((task) => (
+                  sortedTasksData.map((task) => (
                     <tr 
                       key={task.id} 
                       className={cn(

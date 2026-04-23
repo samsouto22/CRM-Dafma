@@ -14,7 +14,9 @@ import {
   Settings,
   Mail,
   MoreHorizontal,
-  Calendar
+  Calendar,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/lib/utils';
@@ -55,10 +57,66 @@ export function ClientManagement() {
   const [showForm, setShowForm] = useState(false);
   const [activeTab, setActiveTab] = useState<'active' | 'inactive'>('active');
   const [selectedClient, setSelectedClient] = useState<any>(null);
+  
+  const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
+  const [colWidths, setColWidths] = useState<Record<string, number>>({
+    company: 250,
+    responsible: 180,
+    startDate: 150,
+    plan: 180,
+    monthly: 150,
+    origin: 150,
+    status: 120
+  });
+
+  const requestSort = (key: string) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const handleResize = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const startX = e.pageX;
+    const startWidth = colWidths[id] || 150;
+    
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const newWidth = Math.max(80, startWidth + (moveEvent.pageX - startX));
+      setColWidths(prev => ({ ...prev, [id]: newWidth }));
+    };
+    
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+    
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  };
 
   const filteredClients = clients.filter(c => 
     activeTab === 'active' ? c.status === 'Ativo' : c.status === 'Inativo'
   );
+
+  const sortedClients = [...filteredClients].sort((a, b) => {
+    if (!sortConfig) return 0;
+    const { key, direction } = sortConfig;
+    
+    let aValue = (a as any)[key];
+    let bValue = (b as any)[key];
+    
+    if (key === 'monthly') {
+      aValue = parseFloat(aValue?.replace('R$ ', '').replace(/\./g, '').replace(',', '.') || '0');
+      bValue = parseFloat(bValue?.replace('R$ ', '').replace(/\./g, '').replace(',', '.') || '0');
+    }
+
+    if (aValue < bValue) return direction === 'asc' ? -1 : 1;
+    if (aValue > bValue) return direction === 'asc' ? 1 : -1;
+    return 0;
+  });
 
   if (loading) {
     return (
@@ -75,7 +133,7 @@ export function ClientManagement() {
     <div className="flex-1 flex flex-col min-h-screen">
       <PageHeader />
 
-      <main className="p-8 space-y-8 max-w-[1500px] mx-auto w-full flex-1">
+      <main className="p-8 space-y-8 max-w-[1800px] mx-auto w-full flex-1">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-on-surface">Gestão de Clientes</h1>
@@ -137,18 +195,102 @@ export function ClientManagement() {
                 <table className="w-full text-left">
                   <thead className="bg-slate-50 border-b border-slate-200">
                     <tr>
-                      <th className="px-5 py-4 text-[11px] font-bold text-secondary uppercase tracking-wider">Empresa</th>
-                      <th className="px-5 py-4 text-[11px] font-bold text-secondary uppercase tracking-wider text-center">Responsável</th>
-                      <th className="px-5 py-4 text-[11px] font-bold text-secondary uppercase tracking-wider text-center">Clientes Desde</th>
-                      <th className="px-5 py-4 text-[11px] font-bold text-secondary uppercase tracking-wider">Plano</th>
-                      <th className="px-5 py-4 text-[11px] font-bold text-secondary uppercase tracking-wider text-right">Mensalidade</th>
-                      <th className="px-5 py-4 text-[11px] font-bold text-secondary uppercase tracking-wider">Origem</th>
-                      <th className="px-5 py-4 text-[11px] font-bold text-secondary uppercase tracking-wider text-center">Status</th>
+                      <th 
+                        style={{ width: colWidths.company }}
+                        onClick={() => requestSort('company')}
+                        className="px-5 py-4 text-[11px] font-bold text-secondary uppercase tracking-wider cursor-pointer hover:bg-slate-100 relative group"
+                      >
+                        <div className="flex items-center gap-1">
+                          Empresa
+                          {sortConfig?.key === 'company' && (
+                            sortConfig.direction === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />
+                          )}
+                        </div>
+                        <div onMouseDown={(e) => handleResize('company', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-container z-10" />
+                      </th>
+                      <th 
+                        style={{ width: colWidths.responsible }}
+                        onClick={() => requestSort('responsible')}
+                        className="px-5 py-4 text-[11px] font-bold text-secondary uppercase tracking-wider text-center cursor-pointer hover:bg-slate-100 relative group"
+                      >
+                        <div className="flex items-center justify-center gap-1">
+                          Responsável
+                          {sortConfig?.key === 'responsible' && (
+                            sortConfig.direction === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />
+                          )}
+                        </div>
+                        <div onMouseDown={(e) => handleResize('responsible', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-container z-10" />
+                      </th>
+                      <th 
+                        style={{ width: colWidths.startDate }}
+                        onClick={() => requestSort('startDate')}
+                        className="px-5 py-4 text-[11px] font-bold text-secondary uppercase tracking-wider text-center cursor-pointer hover:bg-slate-100 relative group"
+                      >
+                        <div className="flex items-center justify-center gap-1">
+                          Clientes Desde
+                          {sortConfig?.key === 'startDate' && (
+                            sortConfig.direction === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />
+                          )}
+                        </div>
+                        <div onMouseDown={(e) => handleResize('startDate', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-container z-10" />
+                      </th>
+                      <th 
+                        style={{ width: colWidths.plan }}
+                        onClick={() => requestSort('plan')}
+                        className="px-5 py-4 text-[11px] font-bold text-secondary uppercase tracking-wider cursor-pointer hover:bg-slate-100 relative group"
+                      >
+                        <div className="flex items-center gap-1">
+                          Plano
+                          {sortConfig?.key === 'plan' && (
+                            sortConfig.direction === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />
+                          )}
+                        </div>
+                        <div onMouseDown={(e) => handleResize('plan', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-container z-10" />
+                      </th>
+                      <th 
+                        style={{ width: colWidths.monthly }}
+                        onClick={() => requestSort('monthly')}
+                        className="px-5 py-4 text-[11px] font-bold text-secondary uppercase tracking-wider text-right cursor-pointer hover:bg-slate-100 relative group"
+                      >
+                        <div className="flex items-center justify-end gap-1">
+                          Mensalidade
+                          {sortConfig?.key === 'monthly' && (
+                            sortConfig.direction === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />
+                          )}
+                        </div>
+                        <div onMouseDown={(e) => handleResize('monthly', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-container z-10" />
+                      </th>
+                      <th 
+                        style={{ width: colWidths.origin }}
+                        onClick={() => requestSort('origin')}
+                        className="px-5 py-4 text-[11px] font-bold text-secondary uppercase tracking-wider cursor-pointer hover:bg-slate-100 relative group"
+                      >
+                        <div className="flex items-center gap-1">
+                          Origem
+                          {sortConfig?.key === 'origin' && (
+                            sortConfig.direction === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />
+                          )}
+                        </div>
+                        <div onMouseDown={(e) => handleResize('origin', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-container z-10" />
+                      </th>
+                      <th 
+                        style={{ width: colWidths.status }}
+                        onClick={() => requestSort('status')}
+                        className="px-5 py-4 text-[11px] font-bold text-secondary uppercase tracking-wider text-center cursor-pointer hover:bg-slate-100 relative group"
+                      >
+                        <div className="flex items-center justify-center gap-1">
+                          Status
+                          {sortConfig?.key === 'status' && (
+                            sortConfig.direction === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />
+                          )}
+                        </div>
+                        <div onMouseDown={(e) => handleResize('status', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-container z-10" />
+                      </th>
                       <th className="px-5 py-4"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {filteredClients.map((client) => (
+                    {sortedClients.map((client) => (
                       <tr 
                         key={client.id} 
                         onClick={() => {
@@ -256,7 +398,7 @@ export function ClientManagement() {
   );
 }
 
-function ClientForm({ onClose, initialData }: { onClose: () => void, initialData?: any }) {
+export function ClientForm({ onClose, initialData }: { onClose: () => void, initialData?: any }) {
   const { plans, origins, fields, addClient, updateClient } = useConfig();
   const [formData, setFormData] = useState<any>(initialData || {
     status: 'Ativo',

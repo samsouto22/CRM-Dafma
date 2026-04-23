@@ -61,6 +61,8 @@ interface ConfigContextType {
   loading: boolean;
   user: User | null;
   authLoading: boolean;
+  showGlobalNewClientModal: boolean;
+  setShowGlobalNewClientModal: (show: boolean) => void;
   login: () => Promise<void>;
   logout: () => Promise<void>;
   addPlan: (plan: string) => void;
@@ -93,6 +95,7 @@ export function ConfigProvider({ children }: { children: React.ReactNode }) {
   const [clients, setClients] = useState<Client[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showGlobalNewClientModal, setShowGlobalNewClientModal] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
@@ -253,6 +256,7 @@ export function ConfigProvider({ children }: { children: React.ReactNode }) {
     <ConfigContext.Provider value={{ 
       plans, origins, fields, clients, tasks, loading,
       user, authLoading, login, logout,
+      showGlobalNewClientModal, setShowGlobalNewClientModal,
       addPlan, removePlan, addOrigin, removeOrigin, 
       addField, removeField, addClient, updateClient, removeClient,
       addTask, updateTask, removeTask

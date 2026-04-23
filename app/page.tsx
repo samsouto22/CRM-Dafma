@@ -3,16 +3,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Sidebar, View } from '@/components/Sidebar';
 import { Dashboard } from '@/components/Dashboard';
-import { ClientManagement } from '@/components/ClientManagement';
+import { ClientManagement, ClientForm } from '@/components/ClientManagement';
 import { SettingsView } from '@/components/SettingsView';
 import { TasksView } from '@/components/TasksView';
 import { useConfig } from '@/lib/config-context';
 import { motion, AnimatePresence } from 'motion/react';
-import { Settings } from 'lucide-react';
+import { Settings, X } from 'lucide-react';
 
 export default function Home() {
   const [currentView, setCurrentView] = useState<View>('dashboard');
-  const { tasks, loading, user, authLoading, login } = useConfig();
+  const { tasks, loading, user, authLoading, login, showGlobalNewClientModal, setShowGlobalNewClientModal } = useConfig();
   const hasNotifiedRef = useRef(false);
 
   useEffect(() => {
@@ -136,6 +136,23 @@ export default function Home() {
       <div className="md:hidden fixed bottom-4 right-4 z-50">
          {/* Could add a mobile menu trigger here if needed */}
       </div>
+
+      {/* Global Modals */}
+      <AnimatePresence>
+        {showGlobalNewClientModal && (
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex justify-end">
+            <motion.div 
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="w-full max-w-md bg-white h-full shadow-2xl relative"
+            >
+              <ClientForm onClose={() => setShowGlobalNewClientModal(false)} />
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

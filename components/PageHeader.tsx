@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Search, Bell, Settings, LogOut } from 'lucide-react';
+import { Search, Plus, Settings, LogOut } from 'lucide-react';
 import { useConfig } from '@/lib/config-context';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -11,7 +11,7 @@ interface PageHeaderProps {
 }
 
 export function PageHeader({ title, showSearch = true }: PageHeaderProps) {
-  const { user, logout } = useConfig();
+  const { user, logout, setShowGlobalNewClientModal } = useConfig();
   const [showUserMenu, setShowUserMenu] = React.useState(false);
 
   return (
@@ -30,9 +30,13 @@ export function PageHeader({ title, showSearch = true }: PageHeaderProps) {
       )}
 
       <div className="flex items-center gap-4">
-        <button className="p-2 text-slate-500 hover:bg-slate-100 rounded-full relative">
-          <Bell size={20} />
-          <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
+        <button 
+          onClick={() => setShowGlobalNewClientModal(true)}
+          className="bg-primary-container text-white px-4 py-2 rounded-lg font-bold text-xs flex items-center gap-2 hover:bg-orange-500 transition-all shadow-[0px_4px_12px_rgba(255,102,0,0.2)] shrink-0"
+        >
+          <Plus size={16} />
+          <span className="hidden sm:inline">+ Novo Cliente</span>
+          <span className="sm:hidden">+ Novo</span>
         </button>
         
         <div className="w-[1px] h-6 bg-slate-200 mx-2" />
