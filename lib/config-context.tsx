@@ -12,7 +12,14 @@ import {
   query,
   orderBy
 } from 'firebase/firestore';
-import { db } from './firebase';
+import { 
+  onAuthStateChanged, 
+  signInWithPopup, 
+  GoogleAuthProvider, 
+  signOut,
+  User 
+} from 'firebase/auth';
+import { db, auth } from './firebase';
 
 export interface Client {
   id: string;
@@ -52,6 +59,10 @@ interface ConfigContextType {
   clients: Client[];
   tasks: Task[];
   loading: boolean;
+  user: User | null;
+  authLoading: boolean;
+  login: () => Promise<void>;
+  logout: () => Promise<void>;
   addPlan: (plan: string) => void;
   removePlan: (plan: string) => void;
   addOrigin: (origin: string) => void;
@@ -81,9 +92,25 @@ export function ConfigProvider({ children }: { children: React.ReactNode }) {
   const [clients, setClients] = useState<Client[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  // Auth State Listener
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setAuthLoading(false);
+      // Reset loading if no user to show login screen
+      if (!currentUser) {
+        setLoading(false);
+      }
+    });
+    return () => unsub();
+  }, []);
 
   // Sync Configuration
   useEffect(() => {
+    if (!user) return;
     const unsub = onSnapshot(doc(db, 'configuration', 'global'), (doc) => {
       if (doc.exists()) {
         const data = doc.data();
@@ -93,10 +120,11 @@ export function ConfigProvider({ children }: { children: React.ReactNode }) {
       }
     }, (error) => console.error("Error syncing config:", error));
     return () => unsub();
-  }, []);
+  }, [user]);
 
   // Sync Clients
   useEffect(() => {
+    if (!user) return;
     setLoading(true);
     const q = query(collection(db, 'clients'), orderBy('startDate', 'desc'));
     const unsub = onSnapshot(q, (snapshot) => {
@@ -111,10 +139,11 @@ export function ConfigProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     });
     return () => unsub();
-  }, []);
+  }, [user]);
 
   // Sync Tasks
   useEffect(() => {
+    if (!user) return;
     const q = query(collection(db, 'tasks'), orderBy('date', 'desc'));
     const unsub = onSnapshot(q, (snapshot) => {
       const tasksData: Task[] = [];
@@ -124,9 +153,27 @@ export function ConfigProvider({ children }: { children: React.ReactNode }) {
       setTasks(tasksData);
     }, (error) => console.error("Error syncing tasks:", error));
     return () => unsub();
-  }, []);
+  }, [user]);
+
+  const login = async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (error) {
+      console.error("Login failed:", error);
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
 
   const saveConfig = async (newPlans: string[], newOrigins: string[], newFields: ClientField[]) => {
+    if (!user) return;
     await setDoc(doc(db, 'configuration', 'global'), {
       plans: newPlans,
       origins: newOrigins,
@@ -203,6 +250,7 @@ export function ConfigProvider({ children }: { children: React.ReactNode }) {
   return (
     <ConfigContext.Provider value={{ 
       plans, origins, fields, clients, tasks, loading,
+      user, authLoading, login, logout,
       addPlan, removePlan, addOrigin, removeOrigin, 
       addField, removeField, addClient, updateClient, removeClient,
       addTask, updateTask, removeTask

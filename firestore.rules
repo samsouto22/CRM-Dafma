@@ -7,7 +7,7 @@ service cloud.firestore {
     }
 
     function isSignedIn() {
-      return true; // Per user request: Open access
+      return request.auth != null;
     }
 
     function isValidId(id) {
