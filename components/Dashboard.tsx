@@ -11,8 +11,9 @@ import {
   ResponsiveContainer,
   Cell
 } from 'recharts';
+import { Sidebar, View } from '@/components/Sidebar';
 import { 
-  DollarSign, 
+  DollarSign,
   Users, 
   TrendingDown, 
   Wallet,
@@ -27,30 +28,103 @@ import { motion } from 'motion/react';
 import { useConfig } from '@/lib/config-context';
 import { PageHeader } from './PageHeader';
 
-export function Dashboard() {
-  const { clients } = useConfig();
+export function Dashboard({ onViewChange }: { onViewChange: (view: View) => void }) {
+  const { clients, tasks } = useConfig();
+
+  const parseCurrency = (value: string) => {
+    if (!value) return 0;
+    return parseFloat(value.replace('R$ ', '').replace(/\./g, '').replace(',', '.')) || 0;
+  };
 
   // Calculate real metrics
   const activeClients = clients.filter(c => c.status === 'Ativo');
+  const today = new Date();
+  const currentDay = today.getDate();
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth(); // 0-11
   
+  // Receita Mensal: Only what was received so far this month
   const monthlyRevenue = activeClients.reduce((acc, client) => {
-    // Remove "R$ " and replace "." with "" and "," with "." to parse as float
-    const cleanValue = client.monthly.replace('R$ ', '').replace(/\./g, '').replace(',', '.');
-    return acc + (parseFloat(cleanValue) || 0);
+    const payDay = parseInt(client.payDay) || 1;
+    if (currentDay >= payDay) {
+      return acc + parseCurrency(client.monthly);
+    }
+    return acc;
   }, 0);
 
   const formattedRevenue = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(monthlyRevenue);
 
-  // Calculate annual accumulation (sum of totalPaid from all clients)
-  const totalAccumulated = clients.reduce((acc, client) => {
-    // totalPaid is a string like "R$ 18.000,00"
-    const cleanValue = client.totalPaid?.replace('R$ ', '').replace(/\./g, '').replace(',', '.') || '0';
-    return acc + (parseFloat(cleanValue) || 0);
-  }, 0);
+  // Logic for Monthly Breakdown and Annual Accumulation
+  const months = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
+  
+  // Chart Data: Last 12 months
+  const chartData = [];
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+    const monthIdx = d.getMonth();
+    const year = d.getFullYear();
+    
+    const monthRevenue = clients.reduce((acc, client) => {
+      if (client.status !== 'Ativo') return acc;
+      
+      const clientStartDate = new Date(client.startDate);
+      if (isNaN(clientStartDate.getTime())) return acc;
+
+      const startYear = clientStartDate.getFullYear();
+      const startMonth = clientStartDate.getMonth();
+      
+      // If the month in loop is after the start month
+      if (year > startYear || (year === startYear && monthIdx >= startMonth)) {
+        // If it's the current month, only count if payday has passed
+        if (year === currentYear && monthIdx === currentMonth) {
+          const payDay = parseInt(client.payDay) || 1;
+          if (currentDay >= payDay) {
+            return acc + parseCurrency(client.monthly);
+          }
+          return acc;
+        }
+        // For past months, we assume received
+        return acc + parseCurrency(client.monthly);
+      }
+      return acc;
+    }, 0);
+    
+    chartData.push({ name: months[monthIdx], value: monthRevenue });
+  }
+
+  // Annual Accumulation: From Jan of current year to current month
+  let totalAccumulated = 0;
+  for (let m = 0; m <= currentMonth; m++) {
+    totalAccumulated += clients.reduce((acc, client) => {
+      if (client.status !== 'Ativo') return acc;
+      
+      const clientStartDate = new Date(client.startDate);
+      if (isNaN(clientStartDate.getTime())) return acc;
+
+      const startYear = clientStartDate.getFullYear();
+      const startMonth = clientStartDate.getMonth();
+      
+      if (currentYear > startYear || (currentYear === startYear && m >= startMonth)) {
+        // If it's the current month, only count if "payDay" has passed
+        if (m === currentMonth) {
+          const payDay = parseInt(client.payDay) || 1;
+          if (currentDay >= payDay) {
+            return acc + parseCurrency(client.monthly);
+          }
+          return acc;
+        }
+        // For past full months of the current year
+        return acc + parseCurrency(client.monthly);
+      }
+      return acc;
+    }, 0);
+  }
+
   const formattedAccumulated = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(totalAccumulated);
 
-  // Calculate Churn (static for now as we don't have historical churn data in context yet)
-  const churnRate = "0.0%";
+  // Ticket Médio Logic
+  const averageTicket = activeClients.length > 0 ? monthlyRevenue / activeClients.length : 0;
+  const formattedTicket = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(averageTicket);
 
   // Breakdown by origin
   const originCounts: Record<string, number> = {};
@@ -65,18 +139,11 @@ export function Dashboard() {
     color: name === 'Meta Ads' ? '#1877f2' : name === 'Google Ads' ? '#ea4335' : name === 'Indicação' ? '#10b981' : '#64748b'
   })).sort((a, b) => b.value - a.value).slice(0, 4);
 
-  // Recent Conversions (last 4 clients)
-  const recentClients = [...clients].sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()).slice(0, 4);
-
-  // Chart data (simulated based on growth for now)
-  const chartData = [
-    { name: 'JAN', value: monthlyRevenue * 0.8 },
-    { name: 'FEV', value: monthlyRevenue * 0.85 },
-    { name: 'MAR', value: monthlyRevenue * 0.9 },
-    { name: 'ABR', value: monthlyRevenue * 0.95 },
-    { name: 'MAI', value: monthlyRevenue },
-    { name: 'JUN', value: monthlyRevenue },
-  ];
+  // Next Tasks Logic
+  const upcomingTasks = [...(tasks || [])]
+    .filter(t => t.status === 'Pendente')
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .slice(0, 5);
 
   return (
     <div className="flex-1 flex flex-col min-h-screen">
@@ -124,14 +191,12 @@ export function Dashboard() {
             iconBg="bg-blue-50"
           />
           <KPICard 
-            title="Taxa de Churn" 
-            value={churnRate} 
-            change="0%" 
-            trend="down" 
-            subText="vs mês anterior" 
-            icon={TrendingDown}
-            iconColor="text-red-600"
-            iconBg="bg-red-50"
+            title="Ticket Médio" 
+            value={formattedTicket} 
+            icon={DollarSign}
+            iconColor="text-primary-container"
+            iconBg="bg-orange-50"
+            subText="per cliente ativo" 
           />
           <KPICard 
             title="ACÚMULO ANUAL" 
@@ -173,9 +238,9 @@ export function Dashboard() {
                     cursor={{ fill: '#F1F5F9', opacity: 0.4 }}
                     contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                   />
-                  <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={40}>
+                  <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={30}>
                     {chartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={index === chartData.length - 1 ? '#010521' : '#ff6600'} />
+                      <Cell key={`cell-${index}`} fill="#ff6600" />
                     ))}
                   </Bar>
                 </BarChart>
@@ -214,42 +279,48 @@ export function Dashboard() {
           </div>
         </div>
 
-        {/* Recent Activity */}
+        {/* Next Tasks */}
         <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
           <div className="p-6 border-b border-slate-200 flex justify-between items-center">
-            <h3 className="text-lg font-bold">Conversões Recentes</h3>
-            <button className="text-primary-container text-sm font-bold hover:underline">Ver Tudo</button>
+            <h3 className="text-lg font-bold">Próximas Tarefas</h3>
+            <button 
+              onClick={() => onViewChange('tasks')}
+              className="text-primary-container text-sm font-bold hover:underline"
+            >
+              Ver Tudo
+            </button>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Tarefa</th>
                   <th className="py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Cliente</th>
-                  <th className="py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Valor</th>
-                  <th className="py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Fonte</th>
-                  <th className="py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
+                  <th className="py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Data</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {recentClients.length > 0 ? recentClients.map((conv, i) => (
-                  <tr key={conv.id} className="hover:bg-slate-50 transition-colors group">
+                {upcomingTasks.length > 0 ? upcomingTasks.map((task, i) => (
+                  <tr 
+                    key={task.id} 
+                    onClick={() => onViewChange('tasks')}
+                    className="hover:bg-slate-50 transition-colors group cursor-pointer"
+                  >
                     <td className="py-4 px-6 relative">
                       <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-primary group-hover:block hidden" />
-                      <span className="text-sm font-semibold">{conv.company}</span>
+                      <span className="text-sm font-semibold">{task.description}</span>
                     </td>
-                    <td className="py-4 px-6 text-sm text-slate-600 font-mono">{conv.monthly}</td>
-                    <td className="py-4 px-6 text-sm text-slate-600">{conv.origin}</td>
-                    <td className="py-4 px-6">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        conv.status === 'Ativo' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
-                      }`}>
-                        {conv.status}
-                      </span>
+                    <td className="py-4 px-6 text-sm text-slate-600">{task.clientName}</td>
+                    <td className="py-4 px-6 text-sm text-slate-500 font-medium text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <Calendar size={14} className="text-slate-400" />
+                        {new Date(task.date).toLocaleDateString('pt-BR')}
+                      </div>
                     </td>
                   </tr>
                 )) : (
                   <tr>
-                    <td colSpan={4} className="py-10 text-center text-slate-400">Nenhum cliente cadastrado</td>
+                    <td colSpan={3} className="py-10 text-center text-slate-400">Nenhuma tarefa pendente</td>
                   </tr>
                 )}
               </tbody>

@@ -86,6 +86,7 @@ export function ConfigProvider({ children }: { children: React.ReactNode }) {
     { id: 'company', label: 'Empresa', type: 'text', placeholder: 'Nome da empresa' },
     { id: 'responsible', label: 'Nome Responsável', type: 'text', placeholder: 'Nome completo' },
     { id: 'monthly', label: 'Mensalidade (R$)', type: 'number', placeholder: '2500' },
+    { id: 'payDay', label: 'Dia do Pagamento', type: 'number', placeholder: '10' },
     { id: 'startDate', label: 'Data Contrato', type: 'date' },
   ]);
 
